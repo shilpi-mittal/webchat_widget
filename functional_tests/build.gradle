@@ -1,0 +1,98 @@
+plugins {
+    id 'java'
+}
+
+group 'org.example'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+//    implementation 'io.rest-assured:rest-assured:5.1.1'
+//    implementation 'com.fasterxml.jackson.core:jackson-core:2.13.3'
+//    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.3'
+    implementation 'org.slf4j:slf4j-api:1.7.36'
+    implementation 'ch.qos.logback:logback-core:1.2.11'
+    implementation 'ch.qos.logback:logback-classic:1.2.11'
+    implementation 'org.seleniumhq.selenium:selenium-java:4.3.0'
+    implementation 'io.github.bonigarcia:webdrivermanager:5.2.1'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testImplementation 'io.cucumber:cucumber-java:7.0.0'
+    testImplementation 'io.cucumber:cucumber-junit:7.0.0'
+
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+configurations {
+    cucumberRuntime {
+        extendsFrom testImplementation
+    }
+}
+
+def cucumberOptionsAPI = ['--plugin', 'pretty', '--glue', 'api_tests/step_definitions', 'src/test/java/api_tests']
+def cucumberOptionsUI = ['--plugin', 'pretty', '--glue', 'ui_tests/step_definitions', 'src/test/java/ui_tests']
+def cucumberThreadsOption = ['--threads', "4"]
+
+def setParallel = System.properties.getProperty("parallel", "false")
+def tags = System.properties.getProperty("tags", "")
+def test_env = System.properties.getProperty("test_env", "local")
+def test_log_level = System.properties.getProperty("test_log_level", "DEBUG")
+def test_browser = System.properties.getProperty("test_browser", "chrome")
+
+// runs all UI acceptance tests. If parallel cmd arg is true then all scenarios are run on parallel threads, else sequentially
+task ui_acceptance_tests() {
+    dependsOn assemble, testClasses
+    doLast {
+        javaexec {
+            main = "io.cucumber.core.cli.Main"
+            classpath = configurations.cucumberRuntime + sourceSets.main.output + sourceSets.test.output
+            systemProperty 'test_env', test_env
+            systemProperty 'test_log_level', test_log_level
+            systemProperty 'test_browser', test_browser
+            cucumberOptionsUI.addAll(['--tags', '@acceptance_test'])
+            if (setParallel == "true") cucumberOptionsUI.addAll(cucumberThreadsOption)
+            args = cucumberOptionsUI
+        }
+    }
+}
+
+// runs all API acceptance tests. If parallel cmd arg is true then all scenarios are run on parallel threads, else sequentially
+task api_acceptance_tests() {
+    dependsOn assemble, testClasses
+    doLast {
+        javaexec {
+            main = "io.cucumber.core.cli.Main"
+            classpath = configurations.cucumberRuntime + sourceSets.main.output + sourceSets.test.output
+            systemProperty 'test_env', test_env
+            systemProperty 'test_log_level', test_log_level
+            cucumberOptionsAPI.addAll(['--tags', '@acceptance_test'])
+            if (setParallel == "true") cucumberOptionsAPI.addAll(cucumberThreadsOption)
+            args = cucumberOptionsAPI
+        }
+    }
+}
+
+// runs all tests with specified tag. If no tag is specified, then runs all tests.
+// If parallel cmd arg is true then all scenarios are run on parallel threads, else sequentially
+task tagged_ui_tests() {
+    dependsOn assemble, testClasses
+    doLast {
+        javaexec {
+            main = "io.cucumber.core.cli.Main"
+            classpath = configurations.cucumberRuntime + sourceSets.main.output + sourceSets.test.output
+            systemProperty 'test_env', test_env
+            systemProperty 'test_log_level', test_log_level
+            systemProperty 'test_browser', test_browser
+            cucumberOptionsUI.addAll(['--tags', tags])
+            if (setParallel == "true") cucumberOptionsUI.addAll(cucumberThreadsOption)
+            args = cucumberOptionsUI
+        }
+    }
+}

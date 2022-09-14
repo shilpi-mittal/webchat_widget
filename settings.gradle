@@ -1,0 +1,3 @@
+rootProject.name = 'webchat_widget'
+include 'functional_tests'
+
